@@ -1,0 +1,6 @@
+name: DungeonsSim
+main: org.enissay.dungeonssim.DungeonsSim
+version: BETA
+api-version: 1.19
+
+depend: [FastAsyncWorldEdit, ProtocolLib]
