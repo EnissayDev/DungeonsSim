@@ -1,21 +1,24 @@
 package org.enissay.dungeonssim.handlers;
 
+import org.bukkit.Bukkit;
+import org.bukkit.Location;
+import org.bukkit.entity.Player;
+import org.bukkit.event.entity.EntityTeleportEvent;
+import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerTeleportEvent;
 import org.enissay.dungeonssim.DungeonsSim;
 import org.enissay.dungeonssim.commands.dungeonloc.TempDungeonBuilds;
-import org.enissay.dungeonssim.dungeon.DungeonTemplate;
-import org.enissay.dungeonssim.dungeon.RoomLocation;
-import org.enissay.dungeonssim.dungeon.RoomSerialization;
+import org.enissay.dungeonssim.dungeon.*;
 import org.enissay.dungeonssim.utils.FileUtils;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 public class DungeonHandler {
 
+    private static LinkedList<Dungeon> dungeons = new LinkedList<>();
     private static LinkedList<DungeonTemplate> templateList = new LinkedList<>();
 
     public static DungeonTemplate getTemplateFromID(final int ID) {
@@ -35,16 +38,92 @@ public class DungeonHandler {
         return template;
     }
 
+    public static LinkedList<Dungeon> getDungeons() {
+        return dungeons;
+    }
+
+    public static boolean addDungeon(final Dungeon dungeon) {
+        if (!dungeons.contains(dungeon)) dungeons.add(dungeon);
+        return dungeons.contains(dungeon);
+    }
+
     public static DungeonTemplate getTemplateFromName(final String templateName) {
         return templateList.stream().filter(template ->
                 template.getName().equals(templateName)).findFirst().get();
     }
 
+    public static Dungeon getDungeonOf(final UUID player) {
+        return dungeons.stream().filter(dungeon -> dungeon.getPlayers().contains(player)).findFirst().orElse(null);
+    }
+
     public static void register(final DungeonTemplate... templates) {
+        EventManager.on(PlayerTeleportEvent.class, event -> {
+            //Bukkit.broadcastMessage("bingo!");
+            final Player player = event.getPlayer();
+            final Location location = event.getFrom();
+            final DungeonRoom dungeonRoom = DungeonHandler.getRoomFromLocation(location);
+            if (dungeonRoom != null &&
+                    dungeonRoom.getCuboid().isIn(location) &&
+                    dungeonRoom.getDungeon().getPlayers().contains(player.getUniqueId())) {
+                if (!dungeonRoom.getWatchers().contains(player.getUniqueId()))
+                    dungeonRoom.addWatcher(player.getUniqueId());
+                List<String> names = new ArrayList<>();
+                dungeonRoom.getWatchers().forEach(uuid -> {
+                    names.add(Bukkit.getPlayer(uuid).getName());
+                });
+                if (!dungeonRoom.getCuboid().isIn(event.getTo()) &&
+                        dungeonRoom.getWatchers().contains(player.getUniqueId())) {
+                    dungeonRoom.getWatchers().remove(player.getUniqueId());
+                    //Bukkit.broadcastMessage("Removed " + Bukkit.getPlayer(player.getUniqueId()).getName());
+                }
+            }
+            if (dungeonRoom != null &&
+                    !dungeonRoom.getCuboid().isIn(event.getTo()) &&
+                    dungeonRoom.getCuboid().isIn(event.getFrom()) &&
+                    dungeonRoom.getWatchers().contains(player.getUniqueId())) {
+                dungeonRoom.getWatchers().remove(player.getUniqueId());
+                //Bukkit.broadcastMessage("Removed " + Bukkit.getPlayer(player.getUniqueId()).getName());
+            }
+
+        });
+        EventManager.on(PlayerMoveEvent.class, event -> {
+            final Player player = event.getPlayer();
+            final Location location = event.getFrom();
+            final DungeonRoom dungeonRoom = DungeonHandler.getRoomFromLocation(location);
+            if (dungeonRoom != null &&
+                    dungeonRoom.getCuboid().isIn(location) &&
+                    dungeonRoom.getDungeon().getPlayers().contains(player.getUniqueId())) {
+                if (!dungeonRoom.getWatchers().contains(player.getUniqueId()))
+                    dungeonRoom.addWatcher(player.getUniqueId());
+                List<String> names = new ArrayList<>();
+                dungeonRoom.getWatchers().forEach(uuid -> {
+                    names.add(Bukkit.getPlayer(uuid).getName());
+                });
+                if (!dungeonRoom.getCuboid().isIn(event.getTo())) {
+                    dungeonRoom.getWatchers().remove(player.getUniqueId());
+                    //Bukkit.broadcastMessage("Removed " + Bukkit.getPlayer(player.getUniqueId()).getName());
+                }
+            }
+        });
+
         Arrays.asList(templates).forEach(temp -> {
+            temp.initEvents();
+            System.out.println("Registered events for " + temp.getName());
             templateList.add(temp);
             System.out.println("Added " + temp.getName());
         });
+    }
+
+    public static DungeonRoom getRoomFromLocation(final Location location) {
+        AtomicReference<DungeonRoom> rooms = new AtomicReference<>();
+        dungeons.forEach(dungeon -> {
+            //Bukkit.broadcastMessage(dungeon.getID() + " rooms: " + dungeon.getRooms().size());
+            dungeon.getRooms().forEach(room -> {
+                //Bukkit.broadcastMessage("room " + room.getRoomName() + " " + room.getTemplate().getName() + " " + room.getCuboid().isIn(location));
+                if (room.getCuboid().isIn(location)) rooms.set(room);
+            });
+        });
+        return rooms.get();
     }
 
     public static DungeonTemplate getTemplate(final String templateName) {

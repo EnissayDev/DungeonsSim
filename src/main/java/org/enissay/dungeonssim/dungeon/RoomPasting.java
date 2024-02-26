@@ -1,6 +1,5 @@
 package org.enissay.dungeonssim.dungeon;
 
-import com.fastasyncworldedit.core.FaweAPI;
 import com.sk89q.worldedit.EditSession;
 import com.sk89q.worldedit.WorldEdit;
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
@@ -16,16 +15,15 @@ import com.sk89q.worldedit.session.ClipboardHolder;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.World;
 import org.bukkit.block.Block;
-import org.bukkit.util.Vector;
-import org.enissay.dungeonssim.DungeonsSim;
 import org.enissay.dungeonssim.commands.dungeonloc.TempDungeonBuilds;
 import org.enissay.dungeonssim.commands.dungeonloc.TempDungeonBuildsManager;
+import org.enissay.dungeonssim.handlers.DungeonHandler;
 import org.enissay.dungeonssim.utils.Cuboid;
 
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class RoomPasting implements Runnable{
     private int taskID, blocksPerTick;
@@ -36,6 +34,8 @@ public class RoomPasting implements Runnable{
     public Iterator<Block> it;
     public RoomRotation rotation;
     public int[] doors;
+
+    private static Map<Dungeon, List<EditSession>> sessions = new HashMap<>();
 
     public RoomPasting(TempDungeonBuilds tempDungeonBuilds, Location spawnLocation, int blocksPerTick, RoomRotation rotation, int[] doors) {
         this.tempDungeonBuilds = tempDungeonBuilds;
@@ -102,7 +102,15 @@ public class RoomPasting implements Runnable{
         };
     }
 
-    public void pasteTest(int gridBlocks) {
+    public static List<EditSession> getSessionsFor(Dungeon dungeon) {
+        return sessions.get(dungeon);
+    }
+
+    public static Map<Dungeon, List<EditSession>> getSessions() {
+        return sessions;
+    }
+
+    public Cuboid pasteTest(Dungeon dungeon, int gridBlocks, boolean door) {
         BlockVector3 pos1Vector = BlockVector3.at(cuboid.getPoint1().getBlockX(), cuboid.getPoint1().getY(), cuboid.getPoint1().getZ());
         BlockVector3 pos2Vector = BlockVector3.at(cuboid.getPoint2().getBlockX(), cuboid.getPoint2().getY(), cuboid.getPoint2().getZ());
         CuboidRegion region = new CuboidRegion(pos1Vector, pos2Vector);
@@ -111,32 +119,84 @@ public class RoomPasting implements Runnable{
         ForwardExtentCopy forwardExtentCopy = new ForwardExtentCopy(
                 BukkitAdapter.adapt(spawnLocation.getWorld()), region, clipboard, region.getMinimumPoint()
         );
-        //forwardExtentCopy.setTransform(forwardExtentCopy.getTransform().combine(new AffineTransform().rotateY(rotation.getRotationTheta())));
-
         Operations.complete(forwardExtentCopy);
 
         final Location location = rotationCorner(spawnLocation, rotation, gridBlocks);
-        BlockVector3 baseLocation = BlockVector3.at(location.getX(), region.getMaximumY(), location.getZ());
+        CuboidTest walls1 = new CuboidTest(cuboid.getPoint1(), cuboid.getPoint2());
+        CuboidTest doorLoc = walls1.getWalls()[0];
+        AtomicReference<Integer> minY = new AtomicReference<>((int) 0);
+        AtomicBoolean passed = new AtomicBoolean(false);
+        doorLoc.forEach(doorL -> {
+            final Block block = doorL.getBlock();
+            if (block.getType() == Material.LIME_WOOL) {
+                minY.set(block.getY());
+                passed.set(true);
+            }
+        });
+        if (!passed.get()) {
+            minY.set(region.getMaximumY());
+            //Bukkit.broadcastMessage("didnt work");
+        }
+        if (door) minY.set(73);
+        //Bukkit.broadcastMessage("minY: " + minY.get() + " diff: " + (minY.get() - 2*(minY.get() - 75)));
+
+        BlockVector3 baseLocation = BlockVector3.at(location.getX(), (minY.get() - 2*(minY.get() - 75)), location.getZ());
 
         try (EditSession editSession = WorldEdit.getInstance().newEditSession(BukkitAdapter.adapt(spawnLocation.getWorld()))) {
-            Operation operation = new ClipboardHolder(clipboard)
+            ClipboardHolder clipboardHolder = new ClipboardHolder(clipboard);
+            //clipboardHolder.setTransform(clipboardHolder.getTransform().combine(new AffineTransform().rotateY(rotation.getRotationTheta())));
+            Operation operation = clipboardHolder
                     .createPaste(editSession)
                     .to(baseLocation)
+                    //.ignoreAirBlocks(door)
                     .copyEntities(false)
                     .build();
             Operations.complete(operation);
+            if (dungeon != null) {
+                List<EditSession> editSessions = getSessionsFor(dungeon);
+                if (editSessions != null) {
+                    editSessions.add(editSession);
+                    sessions.put(dungeon, editSessions);
+                }else {
+                    editSessions = new ArrayList<>();
+                    editSessions.add(editSession);
+                }
+                sessions.put(dungeon, editSessions);
+
+            }
         } catch (Exception ex) {
 
         }
+
         int diffX = region.getPos2().getX() - region.getPos1().getX();
         int diffY = region.getPos2().getY() - region.getPos1().getY();
         int diffZ = region.getPos2().getZ() - region.getPos1().getZ();
-        CuboidTest walls = new CuboidTest(BukkitAdapter.adapt(spawnLocation.getWorld(), baseLocation), BukkitAdapter.adapt(spawnLocation.getWorld(), baseLocation.add(diffX, diffY, diffZ)));
+        CuboidTest newCuboid = new CuboidTest(BukkitAdapter.adapt(spawnLocation.getWorld(), baseLocation), BukkitAdapter.adapt(spawnLocation.getWorld(), baseLocation.add(diffX, diffY, diffZ)));
+        Cuboid tempCuboid = new Cuboid(BukkitAdapter.adapt(spawnLocation.getWorld(), baseLocation), BukkitAdapter.adapt(spawnLocation.getWorld(), baseLocation.add(diffX, diffY, diffZ)));
+
+        if (tempCuboid != null && tempCuboid.blocksListed() != null && tempCuboid.blocksListed().size() > 0) {
+            tempCuboid.blocksListed().forEach(block -> {
+                switch (block.getType()) {
+                    case SPONGE:
+                        //Add system for loot here later
+                        block.setType(Material.CHEST);
+                        break;
+                }
+            });
+        }
+
         for (int i = 0; i < 4; i++) {
-            CuboidTest cuboidTest = walls.getWalls()[i];
+            CuboidTest cuboidTest = newCuboid.getWalls()[i];
             switch (doors[i]) {
                 //NORMAL CLOSING
+
+                /*Map<Integer, String> map = new HashMap<>();
+                map.put(0, "LEFT");
+                map.put(1, "RIGHT");
+                map.put(2, "DOWN");
+                map.put(3, "UP");*/
                 case 1:
+                    int finalI = i;
                     cuboidTest.forEach(loc -> {
                         final Block block = loc.getBlock();
                         if (block.getType() == Material.LIME_WOOL) {
@@ -155,6 +215,7 @@ public class RoomPasting implements Runnable{
                     break;
             }
         }
+        return new Cuboid(BukkitAdapter.adapt(spawnLocation.getWorld(), baseLocation), BukkitAdapter.adapt(spawnLocation.getWorld(), baseLocation.add(diffX, diffY, diffZ)));
     }
 
     public void paste(int gridBlocks) {

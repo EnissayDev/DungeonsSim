@@ -1,6 +1,7 @@
 package org.enissay.dungeonssim.dungeon;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class DungeonGeneration {
@@ -201,22 +202,38 @@ public class DungeonGeneration {
 
     public int getMinimumValidY() {
         //rooms.forEach(room -> System.out.println(room.X + " " + room.Y));
-        return rooms.stream().min(Comparator.comparing(GridCell::getY)).get().getY();
+        GridCell gridCell = rooms.stream().min(Comparator.comparing(GridCell::getY)).orElse(null);
+        return gridCell != null ? gridCell.getY() : null;
     }
 
     public int getMinimumValidX(int columnY) {
         //rooms.forEach(room -> System.out.println(room.X + " " + room.Y));
-        return rooms.stream().filter(grid -> grid.getY() == columnY).min(Comparator.comparing(GridCell::getX)).get().getX();
+        AtomicInteger minX = new AtomicInteger(Integer.MAX_VALUE);
+        rooms.forEach(room -> {
+            if (room.getY() == columnY) {
+                if (room.getX() < minX.get()) minX.set(room.getX());
+            }
+        });
+        //GridCell gridCell = rooms.stream().filter(grid -> grid.getY() == columnY).min(Comparator.comparing(GridCell::getX)).orElse(null);
+        return minX.get();
     }
 
     public int getMaximumValidX(int columnY) {
         //rooms.forEach(room -> System.out.println(room.X + " " + room.Y));
-        return rooms.stream().filter(grid -> grid.getY() == columnY).max(Comparator.comparing(GridCell::getX)).get().getX();
+        AtomicInteger maxX = new AtomicInteger(0);
+        rooms.forEach(room -> {
+            if (room.getY() == columnY) {
+                if (room.getX() > maxX.get()) maxX.set(room.getX());
+            }
+        });
+        //GridCell gridCell = rooms.stream().filter(grid -> grid.getY() == columnY).max(Comparator.comparing(GridCell::getX)).orElse(null);
+        return maxX.get();
     }
 
     public int getMaximumValidY() {
         //rooms.forEach(room -> System.out.println(room.X + " " + room.Y));
-        return rooms.stream().max(Comparator.comparing(GridCell::getY)).get().getY();
+        GridCell gridCell = rooms.stream().max(Comparator.comparing(GridCell::getY)).orElse(null);
+        return gridCell != null ? gridCell.getY() : null;
     }
     private  int getRandomRowInColumn(int columnY, Random random) {
         //System.out.println(getRoomsInColumn(columnY).size() + " for Y: " + columnY);

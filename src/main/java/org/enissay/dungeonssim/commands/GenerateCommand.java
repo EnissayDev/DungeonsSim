@@ -66,7 +66,7 @@ public class GenerateCommand {
                  */
                 RoomPasting roomPasting = new RoomPasting(tempDungeonBuilds, spawnLocation, 100, RoomRotation.valueOf(rotation),
                         new int[]{0, 0, 0, 0});//LEFT, RIGHT, DOWN, UP
-                roomPasting.pasteTest(cuboid.getXWidth());
+                roomPasting.pasteTest(null, cuboid.getXWidth(), templateName.contains("DOOR"));
                 //roomPasting.setTaskID(Bukkit.getScheduler().scheduleSyncRepeatingTask(DungeonsSim.getInstance(), roomPasting, 1, 1));
 
                 /*while (roomPasting != null && !Bukkit.getScheduler().isCurrentlyRunning(roomPasting.getTaskID())) {

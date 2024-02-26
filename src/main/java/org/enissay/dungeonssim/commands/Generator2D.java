@@ -9,7 +9,6 @@ import org.bukkit.map.MapView;
 import org.enissay.dungeonssim.commands.dungeonloc.TempDungeonBuilds;
 import org.enissay.dungeonssim.dungeon.DungeonGeneration;
 import org.enissay.dungeonssim.dungeon.DungeonTemplate;
-import org.enissay.dungeonssim.dungeon.grid.GridCell;
 import org.enissay.dungeonssim.handlers.DungeonHandler;
 import org.jetbrains.annotations.NotNull;
 
@@ -326,7 +325,7 @@ public class Generator2D extends MapRenderer {
                         if (dungeonGeneration.getRoom(x,y) != null &&
                                 GRID_MAP[x][y] == 1 &&
                                 !Objects.isNull(roomNames.get(dungeonGeneration.getRoom(x,y))) &&
-                                roomNames.get(dungeonGeneration.getRoom(x,y)).equalsIgnoreCase("ROOM_2"))
+                                roomNames.get(dungeonGeneration.getRoom(x,y)).equalsIgnoreCase("ROOM_RARE"))
                             cl = new Color(160,32,240, 255);
                         g2.setColor(cl);
                     } else g2.setColor(c1);

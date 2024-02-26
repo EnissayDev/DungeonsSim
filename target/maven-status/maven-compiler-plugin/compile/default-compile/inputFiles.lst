@@ -1,11 +1,13 @@
 C:\Users\Yassine\IdeaProjects\DungeonsSim\src\main\java\org\enissay\dungeonssim\utils\FileUtils.java
 C:\Users\Yassine\IdeaProjects\DungeonsSim\src\main\java\org\enissay\dungeonssim\dungeon\RoomPasting.java
 C:\Users\Yassine\IdeaProjects\DungeonsSim\src\main\java\org\enissay\dungeonssim\commands\Generator2D.java
+C:\Users\Yassine\IdeaProjects\DungeonsSim\src\main\java\org\enissay\dungeonssim\commands\dungeon\DungeonCommand.java
 C:\Users\Yassine\IdeaProjects\DungeonsSim\src\main\java\org\enissay\dungeonssim\dungeon\Dungeon.java
 C:\Users\Yassine\IdeaProjects\DungeonsSim\src\main\java\org\enissay\dungeonssim\dungeon\templates\NormalRoom.java
 C:\Users\Yassine\IdeaProjects\DungeonsSim\src\main\java\org\enissay\dungeonssim\dungeon\DungeonGeneration.java
+C:\Users\Yassine\IdeaProjects\DungeonsSim\src\main\java\org\enissay\dungeonssim\dungeon\DungeonParser.java
 C:\Users\Yassine\IdeaProjects\DungeonsSim\src\main\java\org\enissay\dungeonssim\commands\dungeonloc\TempDungeonBuilds.java
-C:\Users\Yassine\IdeaProjects\DungeonsSim\src\main\java\org\enissay\dungeonssim\dungeon\grid\GridCell.java
+C:\Users\Yassine\IdeaProjects\DungeonsSim\src\main\java\org\enissay\dungeonssim\dungeon\DungeonRoom.java
 C:\Users\Yassine\IdeaProjects\DungeonsSim\src\main\java\org\enissay\dungeonssim\commands\TestCommand.java
 C:\Users\Yassine\IdeaProjects\DungeonsSim\src\main\java\org\enissay\dungeonssim\commands\dungeonloc\TempDungeonListener.java
 C:\Users\Yassine\IdeaProjects\DungeonsSim\src\main\java\org\enissay\dungeonssim\commands\GenerateCommand.java
@@ -14,6 +16,7 @@ C:\Users\Yassine\IdeaProjects\DungeonsSim\src\main\java\org\enissay\dungeonssim\
 C:\Users\Yassine\IdeaProjects\DungeonsSim\src\main\java\org\enissay\dungeonssim\dungeon\templates\BossRoom.java
 C:\Users\Yassine\IdeaProjects\DungeonsSim\src\main\java\org\enissay\dungeonssim\DungeonsSim.java
 C:\Users\Yassine\IdeaProjects\DungeonsSim\src\main\java\org\enissay\dungeonssim\dungeon\DungeonType.java
+C:\Users\Yassine\IdeaProjects\DungeonsSim\src\main\java\org\enissay\dungeonssim\dungeon\DungeonParty.java
 C:\Users\Yassine\IdeaProjects\DungeonsSim\src\main\java\org\enissay\dungeonssim\utils\Cuboid.java
 C:\Users\Yassine\IdeaProjects\DungeonsSim\src\main\java\org\enissay\dungeonssim\commands\dungeonloc\DungeonLocationsCommand.java
 C:\Users\Yassine\IdeaProjects\DungeonsSim\src\main\java\org\enissay\dungeonssim\commands\dungeonloc\TempDungeonBuildsManager.java
@@ -27,6 +30,8 @@ C:\Users\Yassine\IdeaProjects\DungeonsSim\src\main\java\org\enissay\dungeonssim\
 C:\Users\Yassine\IdeaProjects\DungeonsSim\src\main\java\org\enissay\dungeonssim\handlers\DungeonHandler.java
 C:\Users\Yassine\IdeaProjects\DungeonsSim\src\main\java\org\enissay\dungeonssim\utils\LuckUtil.java
 C:\Users\Yassine\IdeaProjects\DungeonsSim\src\main\java\org\enissay\dungeonssim\dungeon\CuboidDirection.java
+C:\Users\Yassine\IdeaProjects\DungeonsSim\src\main\java\org\enissay\dungeonssim\dungeon\EventManager.java
 C:\Users\Yassine\IdeaProjects\DungeonsSim\src\main\java\org\enissay\dungeonssim\commands\Test.java
 C:\Users\Yassine\IdeaProjects\DungeonsSim\src\main\java\org\enissay\dungeonssim\commands\AStar.java
+C:\Users\Yassine\IdeaProjects\DungeonsSim\src\main\java\org\enissay\dungeonssim\dungeon\templates\DungeonDoor.java
 C:\Users\Yassine\IdeaProjects\DungeonsSim\src\main\java\org\enissay\dungeonssim\dungeon\Realm.java
