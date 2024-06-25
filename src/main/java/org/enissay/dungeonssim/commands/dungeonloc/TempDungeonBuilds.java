@@ -1,7 +1,6 @@
 package org.enissay.dungeonssim.commands.dungeonloc;
 
-import org.bukkit.Location;
-import org.enissay.dungeonssim.dungeon.RoomLocation;
+import org.enissay.dungeonssim.dungeon.templates.RoomLocation;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -11,11 +10,13 @@ public class TempDungeonBuilds {
     private java.util.Map<String, RoomLocation> roomLocations = new HashMap<>();
     private String name;
     private String templateName;
+    private int minY;
     private double chance;
 
-    public TempDungeonBuilds(String templateName, String name, double chance) {
+    public TempDungeonBuilds(String templateName, String name, int minY, double chance) {
         this.name = name;
         this.templateName = templateName;
+        this.minY = minY;
         this.chance = chance;
     }
 
@@ -25,6 +26,14 @@ public class TempDungeonBuilds {
 
     public void putLocation(final String locationName, final RoomLocation location) {
         roomLocations.put(locationName, location);
+    }
+
+    public int getMinY() {
+        return minY;
+    }
+
+    public void setMinY(int minY) {
+        this.minY = minY;
     }
 
     public RoomLocation getLocation1() {

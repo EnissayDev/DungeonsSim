@@ -1,7 +1,5 @@
 package org.enissay.dungeonssim.utils;
 
-import com.mojang.authlib.GameProfile;
-import com.mojang.authlib.properties.Property;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.Validate;
 import org.bukkit.DyeColor;
@@ -11,13 +9,10 @@ import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
-import org.yaml.snakeyaml.external.biz.base64Coder.Base64Coder;
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.UUID;
 
 public class ItemUtils {
 
@@ -69,11 +64,11 @@ public class ItemUtils {
      * @return the ItemStack instance
      */
     public static ItemStack skullCustom(String name, String value, String... lore) {
-        ItemStack is = new ItemStack(Material.PLAYER_HEAD);
+        ItemStack is = SkullCreator.itemFromBase64(value);//new ItemStack(Material.PLAYER_HEAD);
         SkullMeta im = (SkullMeta) is.getItemMeta();
-        im.setDisplayName(name);
+        im.setDisplayName(name.replace("&", "§"));
 
-        GameProfile profile = new GameProfile(UUID.randomUUID(), null);
+        /*GameProfile profile = new GameProfile(UUID.randomUUID(), null);
         profile.getProperties().put("textures", new Property("textures", Base64Coder.encodeString(("{textures:[{Value:\"" + value + "\"}]}"))));
         Field profileField = null;
         try {
@@ -82,7 +77,7 @@ public class ItemUtils {
             profileField.set(im, profile);
         } catch (NoSuchFieldException | IllegalArgumentException | IllegalAccessException e) {
             e.printStackTrace();
-        }
+        }*/
 
         is.setItemMeta(im);
         if (lore != null && lore.length != 0) lore(is, lore);
@@ -122,6 +117,7 @@ public class ItemUtils {
                 }
             }
         }
+        ls.forEach(l -> l.replace("&", "§"));
         im.setLore(ls);
         is.setItemMeta(im);
 

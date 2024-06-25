@@ -6,19 +6,14 @@ import org.bukkit.map.MapCanvas;
 import org.bukkit.map.MapCursorCollection;
 import org.bukkit.map.MapRenderer;
 import org.bukkit.map.MapView;
-import org.enissay.dungeonssim.commands.dungeonloc.TempDungeonBuilds;
-import org.enissay.dungeonssim.dungeon.DungeonGeneration;
 import org.enissay.dungeonssim.dungeon.DungeonTemplate;
-import org.enissay.dungeonssim.handlers.DungeonHandler;
+import org.enissay.dungeonssim.dungeon.system.DungeonGeneration;
 import org.jetbrains.annotations.NotNull;
 
 import java.awt.*;
 import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.util.*;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
 public class Generator2D extends MapRenderer {
 
@@ -31,8 +26,9 @@ public class Generator2D extends MapRenderer {
     private BufferedImage image;
     private DungeonGeneration dungeonGeneration;
     private HashMap<DungeonGeneration.GridCell, String> roomNames;
+    private HashMap<DungeonGeneration.GridCell, String> roomTemplates;
 
-    public Generator2D(DungeonGeneration dungeonGeneration, int gridHeight, int gridWidth, int[][] GRID_MAP, int GRID_BLOCKS, HashMap<DungeonGeneration.GridCell, String> roomNames) {
+    public Generator2D(DungeonGeneration dungeonGeneration, int gridHeight, int gridWidth, int[][] GRID_MAP, int GRID_BLOCKS, HashMap<DungeonGeneration.GridCell, String> roomNames, HashMap<DungeonGeneration.GridCell, String> roomTemplates) {
         this.gridHeight = gridHeight;
         this.gridWidth = gridWidth;
         MAX_GRID = gridHeight * gridWidth;
@@ -41,6 +37,7 @@ public class Generator2D extends MapRenderer {
         this.GRID_MAP = GRID_MAP;
         this.roomNames = roomNames;
         this.dungeonGeneration = dungeonGeneration;
+        this.roomTemplates = roomTemplates;
     }
 
     @Override
@@ -324,9 +321,15 @@ public class Generator2D extends MapRenderer {
                         Color cl = new Color(113, 67, 27, 255);
                         if (dungeonGeneration.getRoom(x,y) != null &&
                                 GRID_MAP[x][y] == 1 &&
-                                !Objects.isNull(roomNames.get(dungeonGeneration.getRoom(x,y))) &&
-                                roomNames.get(dungeonGeneration.getRoom(x,y)).equalsIgnoreCase("ROOM_RARE"))
-                            cl = new Color(160,32,240, 255);
+                                !Objects.isNull(roomTemplates.get(dungeonGeneration.getRoom(x,y))) &&
+                                !Objects.isNull(roomNames.get(dungeonGeneration.getRoom(x,y)))) {
+                            DungeonGeneration.GridCell room = dungeonGeneration.getRoom(x,y);
+                            if (roomNames.get(room).equalsIgnoreCase("ROOM_RARE"))
+                                cl = new Color(160,32,240, 255);
+                            else if (roomTemplates.get(room).equalsIgnoreCase("PUZZLE_ROOM")) {
+                                cl = Color.CYAN;
+                            }
+                        }
                         g2.setColor(cl);
                     } else g2.setColor(c1);
                 }

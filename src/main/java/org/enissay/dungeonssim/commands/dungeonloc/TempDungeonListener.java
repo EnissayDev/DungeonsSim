@@ -1,17 +1,14 @@
 package org.enissay.dungeonssim.commands.dungeonloc;
 
 import org.bukkit.ChatColor;
-import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
-import org.enissay.dungeonssim.dungeon.RoomLocation;
+import org.enissay.dungeonssim.dungeon.templates.RoomLocation;
 import org.enissay.dungeonssim.utils.ItemUtils;
-
-import java.util.Map;
 
 public class TempDungeonListener implements Listener {
 

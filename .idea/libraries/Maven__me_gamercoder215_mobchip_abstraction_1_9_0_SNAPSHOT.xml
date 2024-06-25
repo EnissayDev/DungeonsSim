@@ -1,0 +1,13 @@
+<component name="libraryTable">
+  <library name="Maven: me.gamercoder215:mobchip-abstraction:1.9.0-SNAPSHOT">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/me/gamercoder215/mobchip-abstraction/1.9.0-SNAPSHOT/mobchip-abstraction-1.9.0-20230623.214234-15.jar!/" />
+    </CLASSES>
+    <JAVADOC>
+      <root url="jar://$MAVEN_REPOSITORY$/me/gamercoder215/mobchip-abstraction/1.9.0-SNAPSHOT/mobchip-abstraction-1.9.0-20230623.214234-15-javadoc.jar!/" />
+    </JAVADOC>
+    <SOURCES>
+      <root url="jar://$MAVEN_REPOSITORY$/me/gamercoder215/mobchip-abstraction/1.9.0-SNAPSHOT/mobchip-abstraction-1.9.0-20230623.214234-15-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

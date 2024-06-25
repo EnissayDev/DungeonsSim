@@ -1,24 +1,15 @@
 package org.enissay.dungeonssim.dungeon;
 
-import org.bukkit.Bukkit;
 import org.bukkit.entity.Entity;
-import org.bukkit.entity.Player;
-import org.bukkit.event.*;
-import org.bukkit.plugin.EventExecutor;
-import org.bukkit.plugin.Plugin;
-import org.bukkit.plugin.RegisteredListener;
-import org.bukkit.plugin.java.JavaPlugin;
-import org.enissay.dungeonssim.DungeonsSim;
 import org.enissay.dungeonssim.commands.dungeonloc.TempDungeonBuilds;
 import org.enissay.dungeonssim.commands.dungeonloc.TempDungeonBuildsManager;
+import org.enissay.dungeonssim.dungeon.system.DungeonType;
 import org.enissay.dungeonssim.handlers.DungeonHandler;
 import org.enissay.dungeonssim.utils.Cuboid;
 
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
 
 public interface DungeonTemplate{
 
@@ -27,6 +18,13 @@ public interface DungeonTemplate{
         return DungeonType.HOSTILE;
     }
     int getID();
+
+    default boolean hasUniqueRooms() {
+        return false;
+    }
+
+    int getMinRooms();
+    int getMaxRooms();
 
     default Map<String, Double> getRoomsFromTemplate() {
         final List<TempDungeonBuilds> tempDungeonBuilds = DungeonHandler.loadRooms(getName());

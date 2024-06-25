@@ -2,7 +2,7 @@ package org.enissay.dungeonssim.commands.dungeonloc;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
-import org.enissay.dungeonssim.dungeon.RoomLocation;
+import org.enissay.dungeonssim.dungeon.templates.RoomLocation;
 
 import java.util.HashMap;
 import java.util.Map;
