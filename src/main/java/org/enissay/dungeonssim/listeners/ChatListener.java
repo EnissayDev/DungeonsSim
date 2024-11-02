@@ -9,6 +9,7 @@ import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.enissay.dungeonssim.handlers.ProfilesHandler;
 import org.enissay.dungeonssim.profiles.DungeonPlayer;
 import org.enissay.dungeonssim.profiles.Rank;
+import org.enissay.dungeonssim.utils.FormatUtil;
 
 public class ChatListener implements Listener {
 
@@ -16,7 +17,7 @@ public class ChatListener implements Listener {
     public void onChat(final AsyncPlayerChatEvent event) {
         final DungeonPlayer dungeonPlayer = ProfilesHandler.findProfile(event.getPlayer().getUniqueId().toString());
         if (dungeonPlayer != null && dungeonPlayer.getRank() != null)
-            event.setFormat(dungeonPlayer.getRank().getColor().toString() + dungeonPlayer.getRank().name() + " " + "%1$s§f: %2$s");
+            event.setFormat(ChatColor.GRAY + "[Lvl. " + FormatUtil.getLvlText(dungeonPlayer.getLevel()) + ChatColor.GRAY + "] " + dungeonPlayer.getRank().getColor().toString() + dungeonPlayer.getRank().name() + " " + "%1$s§f: %2$s");
         if (event.getMessage().startsWith("!") && dungeonPlayer != null && dungeonPlayer.getRank() != null && Rank.isStaff(event.getPlayer())){
             String prefix = "&b&lSTAFF &8- &r";
             event.setCancelled(true);

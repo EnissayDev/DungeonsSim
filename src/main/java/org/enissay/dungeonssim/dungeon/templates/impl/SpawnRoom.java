@@ -5,13 +5,14 @@ import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
-import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.enissay.dungeonssim.dungeon.*;
 import org.enissay.dungeonssim.dungeon.system.DungeonRoom;
 import org.enissay.dungeonssim.dungeon.DungeonTemplate;
 import org.enissay.dungeonssim.dungeon.system.DungeonType;
+import org.enissay.dungeonssim.dungeon.templates.MonsterFrequency;
+import org.enissay.dungeonssim.entities.CustomMob;
 import org.enissay.dungeonssim.handlers.DungeonHandler;
 
 import java.util.ArrayList;
@@ -49,16 +50,16 @@ public class SpawnRoom implements DungeonTemplate {
                     dungeonRoom.getCuboid().isIn(location) &&
                     dungeonRoom.getDungeon().getPlayers().contains(player.getUniqueId()) &&
                     dungeonRoom.getTemplate().getName().equals(getName())) {
-                player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(ChatColor.GREEN + getName() + "-" + dungeonRoom.getRoomName() + "#" + dungeonRoom.getID() +
+                /*player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(ChatColor.GREEN + getName() + "-" + dungeonRoom.getRoomName() + "#" + dungeonRoom.getID() +
                         ", dungeonID: " + dungeonRoom.getDungeon().getID() +
                         ", players in dungeon: " + dungeonRoom.getDungeon().getPlayers().size() +
-                        ", players in current room " + dungeonRoom.getWatchers().size()));
+                        ", players in current room " + dungeonRoom.getWatchers().size()));*/
                 //player.sendMessage("You're in: " + dungeonRoom.getRoomName() + "#" + dungeonRoom.getID() + " template: " + dungeonRoom.getTemplate().getName() + " dungeonID: " + dungeonRoom.getDungeon().getID());
-                List<String> names = new ArrayList<>();
+                /*List<String> names = new ArrayList<>();
                 dungeonRoom.getWatchers().forEach(uuid -> {
                     if (Bukkit.getPlayer(uuid) != null)
-                    names.add(Bukkit.getPlayer(uuid).getName());
-                });
+                        names.add(Bukkit.getPlayer(uuid).getName());
+                });*/
                 //player.sendMessage("Players: " + String.join(", ", names));
             }
         });
@@ -81,7 +82,7 @@ public class SpawnRoom implements DungeonTemplate {
     }*/
 
     @Override
-    public Map<Entity, Double> getMonstersFrequency() {
+    public MonsterFrequency getMonstersFrequency() {
         return null;
     }
 }

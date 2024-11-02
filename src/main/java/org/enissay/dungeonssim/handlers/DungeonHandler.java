@@ -87,9 +87,18 @@ public class DungeonHandler {
             }
         });
         dungeon.getPlayers().forEach(player -> {
-            if (Bukkit.getOfflinePlayer(player).isOnline())
+            if (Bukkit.getOfflinePlayer(player).isOnline()) {
                 Bukkit.getPlayer(player).teleport(DungeonsSim.getInstance().getSpawnLocation());
+                Bukkit.getPlayer(player).getInventory().setItemInOffHand(null);
+            }
         });
+        dungeon.removeAllHolograms();
+        dungeon.removeBossbar();
+        dungeon.removeAllMobs();
+        dungeon.removeAllNPCs();
+
+        dungeon.stopSongs();
+
         RoomPasting.getSessionsFor(dungeon).clear();
         PuzzleHandler.resetPuzzles(dungeon);
         dungeons.remove(dungeon);
@@ -116,7 +125,7 @@ public class DungeonHandler {
                         else party.setStatus(DungeonPartyStatus.LOBBY);
                     }
                 }
-            }else if (isPlayerInADungeon(player) && party == null){
+            }if (isPlayerInADungeon(player) && party == null){
                 final Dungeon dungeon = getDungeonOf(player.getUniqueId());
                 if (dungeon != null) {
                     dungeon.removePlayer(player.getUniqueId());
@@ -216,25 +225,30 @@ public class DungeonHandler {
                                         String type = "&edoor.";
                                         int keyRooms = dungeonRoom.getDungeon().getDungeonGeneration().getKeyRooms().size();
                                         int openedRooms = dungeonRoom.getDungeon().getRoomsOpened().size();
+                                        boolean hasBossKey = dungeonRoom.getDungeon().hasBossKey();
                                         int remaining = keyRooms - openedRooms;
                                         if (opposite.getRoomName().contains("RARE")) type = "&5&lRARE &edoor.";
                                         else if (opposite.getTemplate().getName().contains("BOSS")) type = "&c&lBOSS &edoor.";
-                                        if (remaining > 1 && !opposite.getTemplate().getName().contains("BOSS") ||
-                                                remaining == 1 && opposite.getTemplate().getName().contains("BOSS")) {
+                                        if ((/*!hasBossKey && */remaining > 1 && !opposite.getTemplate().getName().contains("BOSS")) ||
+                                                (hasBossKey && remaining == 1 && opposite.getTemplate().getName().contains("BOSS"))) {
                                             DungeonParser.openAllKeyDoors(opposite);
                                             dungeonRoom.getDungeon().addRoomOpened(opposite);
 
                                             //player.playSound(player.getLocation(), Sound.ENTITY_WITHER_BREAK_BLOCK, 1f, 0.8f);
                                             MessageUtils.broadcast("&b" + player.getName() + " &eopened a " + type + " &7(&b" + dungeonRoom.getDungeon().getRoomsOpened().size() + "&8/&3" + keyRooms + "&7)", MessageUtils.BroadcastType.SUB_TITLE, MessageUtils.TargetType.DUNGEON, dungeonRoom.getDungeon());
+
                                             if (opposite.getTemplate().getName().contains("BOSS")) {
                                                 MessageUtils.broadcastSound(Sound.ENTITY_EVOKER_PREPARE_ATTACK, 1f, 0.6f, MessageUtils.TargetType.DUNGEON, dungeonRoom.getDungeon());
                                             }else {
                                                 MessageUtils.broadcastSound(Sound.ENTITY_ZOMBIE_VILLAGER_CURE, 1f, 0.6f, MessageUtils.TargetType.DUNGEON, dungeonRoom.getDungeon());
                                             }
                                             //dungeonRoom.getDungeon().broadcast("&b" + player.getName() + " &eopened a " + type + " &e(&b" + dungeonRoom.getDungeon().getRoomsOpened().size() + "&8/&3" + keyRooms + "&7)", Dungeon.BroadcastType.SUB_TITLE);
-                                        }else {
+                                        }else if (remaining > 1 && opposite.getTemplate().getName().contains("BOSS")) {
                                             player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_LAND, 1f, 0.5f);
-                                            player.sendMessage(ChatColor.RED + "You can't open this door yet! " + (remaining - 1) + " remaining doors");
+                                            player.sendMessage(ChatColor.RED + "You can't open this door yet! " + (remaining - 1) + " remaining doors.");
+                                        }else if (!hasBossKey && opposite.getTemplate().getName().contains("BOSS")) {
+                                            player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_LAND, 1f, 0.5f);
+                                            player.sendMessage(ChatColor.RED + "You can't open this door yet! You need the boss's room key.");
                                         }
                                     }
                                 }

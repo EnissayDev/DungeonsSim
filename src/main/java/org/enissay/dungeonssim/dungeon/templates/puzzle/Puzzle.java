@@ -55,6 +55,10 @@ public class Puzzle {
         this.dungeonRoom = dungeonRoom;
     }
 
+
+    public boolean isCompleted() {
+        return dungeonRoom.getDungeon().isPuzzleCompleted(this);
+    }
     public void complete(Player completer) {
         if (!dungeonRoom.getDungeon().isPuzzleCompleted(this)) {
             callback.accept(completer, this);

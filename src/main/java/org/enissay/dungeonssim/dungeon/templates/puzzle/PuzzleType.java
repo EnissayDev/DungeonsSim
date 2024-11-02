@@ -3,7 +3,7 @@ package org.enissay.dungeonssim.dungeon.templates.puzzle;
 public enum PuzzleType {
 
     CUBE_ROTATION("Cube rotation"),
-    SOMETHING("Something");
+    SOUL_COLLECTING("Soul Collecting");
 
     private String name;
 

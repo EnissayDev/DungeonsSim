@@ -14,9 +14,11 @@ import com.sk89q.worldedit.function.operation.Operations;
 import com.sk89q.worldedit.math.BlockVector3;
 import com.sk89q.worldedit.regions.CuboidRegion;
 import com.sk89q.worldedit.session.ClipboardHolder;
+import dev.sergiferry.playernpc.api.NPC;
+import dev.sergiferry.playernpc.api.NPCLib;
 import org.bukkit.*;
 import org.bukkit.block.Block;
-import org.bukkit.scheduler.BukkitScheduler;
+import org.bukkit.scheduler.BukkitRunnable;
 import org.enissay.dungeonssim.DungeonsSim;
 import org.enissay.dungeonssim.commands.dungeonloc.TempDungeonBuilds;
 import org.enissay.dungeonssim.dungeon.CuboidTest;
@@ -26,6 +28,7 @@ import org.enissay.dungeonssim.dungeon.templates.RoomRotation;
 import org.enissay.dungeonssim.dungeon.templates.puzzle.Puzzle;
 import org.enissay.dungeonssim.dungeon.templates.puzzle.PuzzleTemplate;
 import org.enissay.dungeonssim.dungeon.templates.puzzle.PuzzleType;
+import org.enissay.dungeonssim.entities.CustomMob;
 import org.enissay.dungeonssim.handlers.DungeonHandler;
 import org.enissay.dungeonssim.handlers.PuzzleHandler;
 import org.enissay.dungeonssim.utils.Cuboid;
@@ -34,8 +37,11 @@ import org.enissay.dungeonssim.utils.LuckUtil;
 import org.enissay.dungeonssim.utils.MessageUtils;
 
 import java.io.*;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.util.*;
-import java.util.stream.Collectors;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class DungeonParser {
 
@@ -161,14 +167,39 @@ public class DungeonParser {
     }
 
     public static void changePhysicalDoorState(final DungeonRoom dungeonRoom, final Material mask, final Material material, final int doorIndex) {
-        final Cuboid cuboid = dungeonRoom.getCuboid();
+        Cuboid cuboid = dungeonRoom.getCuboid();
         CuboidTest newCuboid = new CuboidTest(cuboid.getPoint1(), cuboid.getPoint2());
         CuboidTest cuboidTest = newCuboid.getWalls()[doorIndex];
+
+        /*if (cuboidTest != null) {
+            new BukkitRunnable() {
+                int currentY = cuboidTest.getUpperY();
+                @Override
+                public void run() {
+                    cuboidTest.forEach(loc -> {
+                        final Block block = loc.getBlock();
+                        if (block.getY() == currentY && block.getType() == mask) {
+                            block.setType(material);
+                        }
+                    });
+                    List<Block> blocks = new ArrayList<>();
+                    cuboidTest.forEach(loc -> {
+                        final Block block = loc.getBlock();
+                        blocks.add(block);
+                    });
+                    if (blocks.stream()
+                            .filter(block -> block.getType() == mask).count() == 0 ||
+                            currentY <= cuboidTest.getLowerY()) {
+                        this.cancel();
+                    }
+                    currentY--;
+                }
+            }.runTaskTimer(DungeonsSim.getInstance(), 0, 1);
+        }*/
         cuboidTest.forEach(loc -> {
             final Block block = loc.getBlock();
-            if (block.getType() == mask) {
+            if (block.getType() == mask)
                 block.setType(material);
-            }
         });
 
     }
@@ -248,12 +279,17 @@ public class DungeonParser {
         HashMap<DungeonGeneration.GridCell, String> roomNames = new HashMap<>();
         HashMap<DungeonGeneration.GridCell, DungeonTemplate> roomTemp = new HashMap<>();
         HashMap<DungeonTemplate, String> tempRooms = new HashMap<>();
+        HashMap<DungeonTemplate, Set<String>> blacklistedRooms = new HashMap<>();
 
         Map<DungeonTemplate, Double> templates = new HashMap<>();
 
-        DungeonHandler.getTemplateList().forEach(temp -> {
-            if (!temp.getName().equals("SPAWN_ROOM") && !temp.getName().equals("BOSS_ROOM"))
-                templates.put(temp, (double) ((1.0 / DungeonHandler.getTemplateList().size()) * 100));
+        DungeonHandler.getTemplateList().forEach(template -> {
+            Set<String> def = new HashSet<>();
+            //def.add("ROOM_RARE");
+            blacklistedRooms.put(template, def);
+
+            if (!template.getName().equals("SPAWN_ROOM") && !template.getName().equals("BOSS_ROOM"))
+                templates.put(template, (double) ((1.0 / DungeonHandler.getTemplateList().size()) * 100));
         });
 
         Map<Integer, String> map = new HashMap<>();
@@ -299,15 +335,31 @@ public class DungeonParser {
 
             TempDungeonBuilds tempDungeonBuilds;
             String chosenRoom = LuckUtil.getRandomWeighted(template.getRoomsFromTemplate(), dungeonGeneration.getRandom());
+
             if (gridCell != null && gridCell.getDoors() != null) {
-                if (template.hasUniqueRooms() && template.getBuilds().keySet().size() > 1 &&
-                        tempRooms.get(template) != null && tempRooms.containsKey(template) && tempRooms.get(template).equalsIgnoreCase(chosenRoom)) {
-                    final Map<String, Double> newRooms = new HashMap<>();
-                    String finalChosenRoom = chosenRoom;
-                    template.getRoomsFromTemplate().forEach((roomName, chance) -> {
-                        if (!roomName.equalsIgnoreCase(finalChosenRoom)) newRooms.put(roomName, chance);
-                    });
-                    chosenRoom = LuckUtil.getRandomWeighted(newRooms, dungeonGeneration.getRandom());
+                if (template.hasUniqueRooms() && template.getBuilds().keySet().size() > 1) {
+                    if (blacklistedRooms.get(template).contains(chosenRoom)) {
+                        final Set<String> rooms = blacklistedRooms.get(template);
+                        while (true) {
+                            String fr = LuckUtil.getRandomWeighted(template.getRoomsFromTemplate(), dungeonGeneration.getRandom());
+                            if (!rooms.contains(fr)) {
+                                chosenRoom = fr;
+                                break;
+                            }
+                        }
+                        if (!chosenRoom.contains("RARE")) {
+                            Set<String> set = blacklistedRooms.get(template);
+                            set.add(chosenRoom);
+                            blacklistedRooms.put(template, set);
+                        }
+
+                    }else {
+                        if (!chosenRoom.contains("RARE")) {
+                            Set<String> set = blacklistedRooms.get(template);
+                            set.add(chosenRoom);
+                            blacklistedRooms.put(template, set);
+                        }
+                    }
                 }
                 for (int j = 0; j < gridCell.getDoors().length; j++) {
                     final DungeonGeneration.GridCell opposites = getOpposite(dungeonGeneration, j, gridCell);
@@ -326,6 +378,8 @@ public class DungeonParser {
             tempRooms.put(template, chosenRoom);
 
             roomNames.put(gridCell, chosenRoom);
+
+            //Bukkit.broadcastMessage(template.getName() + " -> " + chosenRoom);
             tempDungeonBuilds = DungeonHandler.loadRoom(template.getName(), chosenRoom);
 
             if (tempDungeonBuilds.getTemplateName().equals("BOSS_ROOM")) dungeonGeneration.getKeyRooms().add(gridCell);
@@ -404,6 +458,7 @@ public class DungeonParser {
                 .relightMode(RelightMode.ALL)
                 //.maxBlocks(1)
                 .build();
+        AtomicReference<RoomPasting> roomPasting = new AtomicReference<>();
         dungeonGeneration.getRooms().forEach((gridCell) -> {
 
             int input = dungeonGeneration.getGridMap()[gridCell.getX()][gridCell.getY()];
@@ -423,9 +478,10 @@ public class DungeonParser {
 
             RoomPasting roomPastingSpawn = new RoomPasting(tempDungeonBuilds, new Location(location.getWorld(), startX, location.getBlockY(), startY), initialDirection,
                     gridCell.getDoors(), editSession);//LEFT, RIGHT, DOWN, UP
-            final Cuboid cuboid = roomPastingSpawn.paste(dungeon, dungeonGeneration.getGridBlocks());
+            final Cuboid cuboid = roomPastingSpawn.paste(dungeon, dungeonGeneration.getGridBlocks(), template.getName().equals("SPAWN_ROOM"));
             dungeon.addRoom(new DungeonRoom(dungeon, template, roomNames.get(gridCell), cuboid, gridCell, dungeon.getRooms().size() + 1));
             pastedRooms.add(gridCell);
+            if (template.getName().contains("SPAWN")) roomPasting.set(roomPastingSpawn);
         });
 
         dungeon.getRooms().forEach(room -> {
@@ -451,12 +507,285 @@ public class DungeonParser {
             puzzle.whenComplete((completer, puzz) -> {
                 MessageUtils.broadcast("&b" + completer.getName() + "&e has completed the puzzle &d" + puzz.getPuzzleType().getName(),
                         MessageUtils.BroadcastType.MESSAGE, MessageUtils.TargetType.DUNGEON, dungeon);
+                MessageUtils.broadcastDungeonSound(dungeon, Sound.ENTITY_PLAYER_LEVELUP, 1, .1f);
             });
         });
+
+        /**
+         * SPAWN MOBS W FREQ
+         */
+
+        AtomicBoolean started = new AtomicBoolean(false);
+        dungeon.getRooms().forEach(room -> {
+            if (room.getLocationFromTemplate("npcLocation") != null && room.getTemplate().getName().contains("SPAWN")) {
+                List<UUID> playersStart = new ArrayList<>();
+
+                Location loc = room.getLocationFromTemplate("npcLocation");
+                room.getDungeon().getPlayers().stream().map(p -> {
+                    return Bukkit.getPlayer(p);
+                }).forEach(onlinePlayer -> {
+                    NPC.Personal npc = NPCLib.getInstance().generatePersonalNPC(onlinePlayer, DungeonsSim.getInstance(), "npcspawn", loc);
+                    npc.setGlowing(true, ChatColor.GREEN);
+                    npc.setSkin("ewogICJ0aW1lc3RhbXAiIDogMTY2NjYzNjUzOTMyOSwKICAicHJvZmlsZUlkIiA6ICJmYjNhZTU0OTU3ODQ0MGVlODIzODJlMDY2MzlhYTkzMiIsCiAgInByb2ZpbGVOYW1lIiA6ICJJRm9yZ290TXlXYWxsZXQiLAogICJzaWduYXR1cmVSZXF1aXJlZCIgOiB0cnVlLAogICJ0ZXh0dXJlcyIgOiB7CiAgICAiU0tJTiIgOiB7CiAgICAgICJ1cmwiIDogImh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZDY4NmZmMWY1Njg1MzdmMjQwOWU4OGZkNDMyNWYwYTA4ZjhkOThkN2M0N2UwYWYxY2IxMzI0NGRmNTM5ZDk3YyIKICAgIH0KICB9Cn0=",
+                            "cwpBAh+PAeh4cIiBAK98tP1ZPB6xqOXzeJgLoHYLbalku7xhU7wZmIoe7SKV5Q3X2hgFI+vZPkHAcVjZea3vZ9J1XF7RRjeR2D+w27Xc1HKrvD5TFt3ZzRYvf7i4qM07lHsatkEhKo9kDjNWDGC3hMakyeEXGFPM2zWC6Jahyo7rg0xMMx3edX7GCGuAkckGmtZ2+CoSOk84kWBaUc31rt/ZzhF7RUuVcPqFmdMt3MwlFnO3bxQfsy8FjXlVVwwre0XWSblMMwN18O+wDZoyIzyxFbdaN92N7cBvOEqEyuwJFX60rvn/LQICCTaScy/LArXrNk/9XchVAsjKtKmy8l5SJF6tEZ953I4X0bvfdVSUFBSy5eT7JN5nCw1rTzE2mRiPtPhPvSUmKgsHHToIyVuI+h97CHFDRw5DMrwdBKtwSUQU5+gSp4iRjyZV/43teoBqnAxJxS9Nyz4o2KdDkfn0Gfbbb2lnKSBc+HwPLxAM3tQ4tUKVgKmJIjsywvn29a69G1ZGO2InaujTcxLPdRg/rXHtYkLS0xxL2L7l/mVoUe3ZFT2OkQnROb/1NkEpN1WRVtvhNQxaUHrne2pWpTO5YCDEkFXgRGsWlFam43Q5Ae8KCl6J0petGZtS/zSdV7YA7sC0vgQ0Kw8+KBqdHX+6ktZ+CnH3ye2IKC7RJw4=");
+                    npc.setTabListVisibility(NPC.TabListVisibility.NEVER);
+                    npc.setCollidable(false);
+                    npc.setInteractCooldown(2*1000);
+                    npc.setText("&2[Lvl. ??] &aKnight", "&7Interact");
+                    npc.setGazeTrackingType(NPC.GazeTrackingType.NEAREST_PLAYER);
+
+                    npc.addCustomClickAction(NPC.Interact.ClickType.EITHER, (NPC, player) -> {
+                        if (!playersStart.contains(player.getUniqueId()) && !started.get()) {
+                            playersStart.add(player.getUniqueId());
+                            MessageUtils.broadcastDungeon(dungeon, "&2" + player.getName() + " &ais ready. &7[" + playersStart.size() + "/" + dungeon.getPlayers().size() + "]", MessageUtils.BroadcastType.MESSAGE);
+                        }
+                        if (playersStart.size() == dungeon.getPlayers().size() && !started.get()) {
+                            MessageUtils.broadcastDungeon(dungeon, "&aSTARTING...", MessageUtils.BroadcastType.TITLE);
+                            MessageUtils.broadcastDungeon(dungeon, "&aSTARTING...", MessageUtils.BroadcastType.MESSAGE);
+                            MessageUtils.broadcastDungeonSound(dungeon, Sound.BLOCK_ANVIL_DESTROY, 1f, .1f);
+                            roomPasting.get().getSpawnDoors().forEach(b -> b.setType(Material.AIR));
+                            started.set(true);
+
+                            /*String songName = "dungeon1_bossfight";
+                            Song song = NBSDecoder.parse(new File(DungeonsSim.getInstance().getDataFolder().getAbsolutePath() +
+                                    "/songs/" + songName + ".nbs"));
+                            RadioSongPlayer a = new RadioSongPlayer(song);
+                            a.setAutoDestroy(true);
+                            a.setRepeatMode(RepeatMode.ONE);
+
+                            a.addPlayer(onlinePlayer);
+                            a.setPlaying(true);*/
+
+                            /*songs.add(new RadioSongPlayer(song));
+                            NoteBlockAPI.setSongPlayersByPlayer(onlinePlayer.getUniqueId(), songs);*/
+                            playersStart.clear();
+                        }else if (started.get())
+                            player.sendMessage(ChatColor.GREEN + "Knight" + ChatColor.GRAY + ": " + ChatColor.RESET + "The dungeon has already started.");
+                            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, .1f);
+                    });
+                    npc.create();
+                    npc.show();
+
+                    dungeon.addNPC(npc);
+                });
+            }
+            if (room.getTemplate().getMonstersFrequency() != null) {
+                // Average min Y for first dungeon is 75
+                int spawnedMobs = 0;
+                int capMobs = 7;
+                Location centerLoc = room.getCuboid().getCenter();
+                int minY = 77;
+                int maxY = (int) (minY + (room.getCuboid().getHeight() / 1.75555555));
+                Map<Class<? extends CustomMob>, Double> randomMap = new HashMap<>();
+
+                room.getTemplate().getMonstersFrequency().getSpawnInfosForRoom(room.getRoomName()).forEach(spawnInfo -> {
+                    randomMap.put(room.getTemplate().getMonstersFrequency().getMobFromSpawnInfo(spawnInfo), spawnInfo.getChance());
+                });
+
+                Map<DungeonTemplate.SpawnInfo, Integer> spawnCounts = new HashMap<>();
+
+                while (spawnedMobs < capMobs) {
+                    int randY = minY + (int) (Math.random() * ((maxY - minY) + 1));
+                    double offsetX = (Math.random() - 0.5) * room.getCuboid().getXWidth() / 2;
+                    double offsetZ = (Math.random() - 0.5) * room.getCuboid().getZWidth() / 2;
+
+                    Location spawnLoc = centerLoc.clone().add(offsetX, 0, offsetZ);
+                    spawnLoc.setY(randY);
+
+                    if (isSpawnable(spawnLoc) && spawnLoc.distance(centerLoc) <= 15) {
+                        Class<? extends CustomMob> selectedMonsterClass = LuckUtil.getRandomWeighted(randomMap);
+
+                        if (selectedMonsterClass != null) {
+                            DungeonTemplate.SpawnInfo spawnInfo = room.getTemplate().getMonstersFrequency().getSpawnInfos(selectedMonsterClass)
+                                    .stream().filter(info -> info.getRoomName().equals(room.getRoomName())).findFirst().orElse(null);
+
+                            if (spawnInfo != null) {
+                                int currentCount = spawnCounts.getOrDefault(spawnInfo, 0);
+
+                                if (spawnInfo.getSpawnLimit() == -1 || currentCount < spawnInfo.getSpawnLimit()) {
+                                    try {
+                                        Constructor<? extends CustomMob> constructor = selectedMonsterClass.getConstructor(Location.class, int.class, double.class);
+                                        CustomMob mob = constructor.newInstance(spawnLoc, dungeon.getDungeonDifficulty().getLevel(), (1.8 * (dungeon.getPlayers().size() - 1)));
+                                        dungeon.addCustomMob(mob.getNMSEntity());
+
+                                        spawnedMobs++;
+                                        spawnCounts.put(spawnInfo, currentCount + 1);
+                                    } catch (NoSuchMethodException | InstantiationException | IllegalAccessException |
+                                             InvocationTargetException e) {
+                                        e.printStackTrace();
+                                    }
+                                } else {
+                                    // Remove the entry from the random map if it has reached the spawn limit
+                                    randomMap.remove(selectedMonsterClass);
+                                }
+                            }
+                        } else {
+                            System.out.println("error spawning mobs");
+                            break;
+                        }
+                    }
+                }
+            }
+        });
+
+        /*dungeon.getRooms().forEach(room -> {
+            if (room.getTemplate().getMonstersFrequency() != null && !room.getTemplate().getMonstersFrequency().isEmpty()) {
+                Location centerLoc = room.getCuboid().getCenter();
+                int mobsSpawned = 0;
+                while (mobsSpawned < 10) {
+                    // Random offsets within the room's boundaries
+                    double offsetX = (Math.random() - 0.5) * room.getCuboid().getXWidth();
+                    double offsetZ = (Math.random() - 0.5) * room.getCuboid().getZWidth();
+
+                    // Calculate the spawn location within the room's height
+                    double offsetY = (Math.random() - 0.5) * room.getCuboid().getHeight();
+                    Location spawnLoc = centerLoc.clone().add(offsetX, offsetY, offsetZ);
+
+                    // Check if spawn location is below a certain Y level
+                    if ((isSpawnable(spawnLoc.add(1, 0, -1)) &&
+                            isSpawnable(spawnLoc.add(-1, 0, 1)) &&
+                            isSpawnable(spawnLoc.add(-1, 0, -1)) &&
+                            isSpawnable(spawnLoc.add(1, 0, 1)) &&
+                    isSpawnable(spawnLoc.add(0, 0, -1)) &&
+                    isSpawnable(spawnLoc.add(-1, 0, 0)) &&
+                            isSpawnable(spawnLoc.add(0, 0, 1)) &&
+                            isSpawnable(spawnLoc.add(1, 0, 0)) &&
+                            isSpawnable(spawnLoc)) && (spawnLoc.getBlockY() < 75 + (room.getCuboid().getHeight() / 1.75555555)) || spawnLoc.getBlockY() == 76) {
+                        // Check if spawn location is within 15 blocks of the room's center
+                        if (spawnLoc.distance(centerLoc) <= 15) {
+                            // Calculate total frequency
+                            double totalFrequency = room.getTemplate().getMonstersFrequency().values().stream().mapToDouble(Double::doubleValue).sum();
+
+                            // Generate random number between 0 and totalFrequency
+                            double randomValue = Math.random() * totalFrequency;
+
+                            // Select monster based on random number
+                            double cumulativeProbability = 0.0;
+                            Class<? extends CustomMob> selectedMonsterClass = null;
+
+                            for (Map.Entry<Class<? extends CustomMob>, Double> entry : room.getTemplate().getMonstersFrequency().entrySet()) {
+                                cumulativeProbability += entry.getValue();
+                                if (randomValue <= cumulativeProbability) {
+                                    selectedMonsterClass = entry.getKey();
+                                    break;
+                                }
+                            }
+
+                            // Spawn the selected monster
+                            if (selectedMonsterClass != null) {
+                                try {
+                                    Constructor<? extends CustomMob> constructor = selectedMonsterClass.getConstructor(Location.class, int.class);
+                                    CustomMob mob = constructor.newInstance(spawnLoc, dungeon.getDungeonDifficulty().getLevel());
+                                    dungeon.addCustomMob(mob.getNMSEntity());
+                                    // Optionally, perform additional operations on the spawned monster
+                                    // For example, add to a list of active monsters or notify players
+
+                                    // Bukkit.broadcastMessage("Spawned " + selectedMonsterClass.getSimpleName() + " at " + spawnLoc.toString());
+                                    mobsSpawned++;
+                                } catch (NoSuchMethodException | InstantiationException | IllegalAccessException | InvocationTargetException e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+        });*/
+        /*int size = 99;
+        dungeon.getRooms().forEach(room -> {
+            if (room.getTemplate().getMonstersFrequency() != null && room.getTemplate().getMonstersFrequency().size() > 0) {
+                // Spawning Algorithm
+                int diff = 100 - room.getTemplate().getMonstersFrequency().keySet().size();
+                if (diff <= 0) return;
+                int spawnAmount = (int) (Math.random() * (diff + 1)), count = 0;
+                while (count <= spawnAmount) {
+                    count++;
+                    int ranX = getRandomWithNeg(size), ranZ = getRandomWithNeg(size);
+                    Block block = Bukkit.getWorld("world").getHighestBlockAt(ranX, ranZ);
+                    if (block.getY()>90)return;
+                    double xOffset = getRandomOffset(), zOffset = getRandomOffset();
+                    Location loc = block.getLocation().clone().add(xOffset + room.getCuboid().getCenter().getX(), 1, zOffset + room.getCuboid().getCenter().getZ());
+                    if (!isSpawnable(loc)) continue;
+                    double random = Math.random() * 101;
+
+                    AtomicReference<Double> previous = new AtomicReference<>((double) 0);
+                    room.getTemplate().getMonstersFrequency().forEach((customMob, chance) -> {
+                        previous.updateAndGet(v -> new Double((double) (v + chance)));
+                        if (random <= previous.get()) {
+                            try {
+                                Class<?> clazz = customMob;
+
+                                Constructor<?> constructor = clazz.getConstructor(Location.class);
+                                constructor.newInstance(loc);
+
+                                //Bukkit.broadcastMessage("spawned " + loc.getX() + " " + loc.getY() + " " + loc.getZ());
+                            } catch (NoSuchMethodException | InstantiationException | IllegalAccessException |
+                                     InvocationTargetException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    });
+                }
+            }
+        });*/
         DungeonHandler.addDungeon(dungeon);
+
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                AtomicBoolean finished = new AtomicBoolean(false);
+                dungeon.getPlayers().forEach(uuid -> {
+                    if (dungeon.getDeathsOf(uuid) >= dungeon.getMaxDeaths()) {
+                        finished.set(true);
+                        return;
+                    }
+                });
+                if ((dungeon.getProgression() > 50 || dungeon == null) && !finished.get()) {
+                    MessageUtils.broadcastDungeon(dungeon, "&c&lKEY&c: &eObjective of &c50%&e has been reached!", MessageUtils.BroadcastType.MESSAGE);
+                    dungeon.giveBossKey();
+                    MessageUtils.broadcastDungeonSound(dungeon, Sound.BLOCK_NOTE_BLOCK_PLING, 1, 2);
+                    cancel();
+                }
+            }
+        }.runTaskTimer(DungeonsSim.getInstance(), 0, 20);
+    }
+
+     private static boolean isSpawnable(Location loc) {
+        Block feetBlock = loc.getBlock(), headBlock = loc.clone().add(0, 1, 0).getBlock(), upperBlock = loc.clone().add(0, 2, 0).getBlock();
+        return feetBlock.isPassable() && !feetBlock.isLiquid() && headBlock.isPassable() && !headBlock.isLiquid() && upperBlock.isPassable() && !upperBlock.isLiquid();
     }
 
 
+    /*private static boolean isSpawnable(Location loc) {
+        World world = loc.getWorld();
+
+        // Check if the location is within loaded chunks
+        if (!world.isChunkLoaded(loc.getBlockX() >> 4, loc.getBlockZ() >> 4)) {
+            return false;
+        }
+
+        // Check if all adjacent blocks are loaded, passable, not liquid, empty space, and provide sufficient headroom
+        return !willSuffocate(loc);
+    }*/
+
+    // Helper method to check if a block is valid for spawning
+    private static boolean isBlockValid(Location loc) {
+        Block block = loc.getBlock();
+        return block.isPassable() && !block.isLiquid() &&
+                block.getType().isAir() && !block.getType().hasGravity() && !block.getType().isOccluding();
+    }
+
+    // Helper method to check if the location will suffocate entities
+    private static boolean willSuffocate(Location loc) {
+        int entityHeight = 2;
+        for (int y = 1; y <= entityHeight; y++) {
+            Location checkLoc = loc.clone().add(0, y, 0);
+            Block block = checkLoc.getBlock();
+            return isBlockValid(loc.clone()) && isBlockValid(block.getLocation()) && (y == 1 && !isBlockValid(loc.clone().subtract(0, y, 0)));
+        }
+        return false; // No suffocation risk found
+    }
     public static DungeonGeneration.GridCell getOpposite(DungeonGeneration dungeonGeneration, int doorIndex, DungeonGeneration.GridCell gridCell) {
         //2 DOWN = y + 1 UP 3
         //1 RIGHT = x + 1 LEFT 0

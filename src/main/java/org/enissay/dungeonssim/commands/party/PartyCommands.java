@@ -9,6 +9,10 @@ import dev.rollczi.litecommands.annotations.command.Command;
 import dev.rollczi.litecommands.annotations.context.Context;
 import dev.rollczi.litecommands.annotations.execute.Execute;
 import dev.rollczi.litecommands.annotations.optional.OptionalArg;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.HoverEvent;
 import net.md_5.bungee.api.chat.TextComponent;
@@ -20,12 +24,17 @@ import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.MapMeta;
 import org.bukkit.map.MapView;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 import org.enissay.dungeonssim.DungeonsSim;
 import org.enissay.dungeonssim.commands.Generator2D;
 import org.enissay.dungeonssim.commands.dungeonloc.TempDungeonBuilds;
 import org.enissay.dungeonssim.dungeon.DungeonTemplate;
 import org.enissay.dungeonssim.dungeon.party.*;
 import org.enissay.dungeonssim.dungeon.system.*;
+import org.enissay.dungeonssim.gui.InventoryGUI;
+import org.enissay.dungeonssim.gui.impl.ClassGUI;
+import org.enissay.dungeonssim.gui.impl.DifficultyGUI;
 import org.enissay.dungeonssim.handlers.DungeonHandler;
 import org.enissay.dungeonssim.handlers.PartyHandler;
 import org.enissay.dungeonssim.utils.InventoryFill;
@@ -131,12 +140,51 @@ public class PartyCommands {
             }else {
                 dungeonParty.setPublic(!dungeonParty.isPublic());
                 dungeonParty.sendMessageToMembers(ChatColor.AQUA + player.getName() + ChatColor.YELLOW + " has changed the status of the party.");
+                if (dungeonParty.isPublic()) {
+                    /*final net.kyori.adventure.text.TextComponent textComponent2 = Component.text()
+                            .content("You're a ")
+                            .color(TextColor.color(0x443344))
+                            .append(Component.text().content("Bunny").color(NamedTextColor.LIGHT_PURPLE))
+                            .append(Component.text("! Press "))
+                            .append(
+                                    Component.keybind().keybind("key.sneak")
+                                            .color(NamedTextColor.LIGHT_PURPLE)
+                                            .decoration(TextDecoration.BOLD, true)
+                                            .build()
+                            )
+                            .append(Component.text(" to jump!"))
+                            .build();*/
+                    final net.kyori.adventure.text.TextComponent textComponent2 = Component.text()
+                            /*.append(Component.text("PARTY ").color(NamedTextColor.GOLD)
+                                    .decorate(TextDecoration.BOLD))*/
+                            .color(NamedTextColor.GRAY)
+                            /*.append(Component.text().content("click")
+                                    .clickEvent(net.kyori.adventure.text.event.ClickEvent.clickEvent(net.kyori.adventure.text.event.ClickEvent.Action.RUN_COMMAND, "/party join " + dungeonParty.getName()))
+                                    .color(NamedTextColor.GREEN)
+                                    .decorate(TextDecoration.UNDERLINED))*/
+                            .append(Component.text(Bukkit.getOfflinePlayer(dungeonParty.getPlayers(DungeonRole.HOST).get(0)).getName()).color(NamedTextColor.YELLOW))
+                            .append(Component.text("'s party "))
+                            .append(Component.text("[" + dungeonParty.getName() + "]")
+                                    .hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(Component.text()
+                                            .append(Component.text("Players: ").color(NamedTextColor.WHITE)
+                                                    .append(Component.text("[" + dungeonParty.getPlayers().size() + "/" + dungeonParty.getMaxPlayers() + "]").color(NamedTextColor.GRAY))).build()))
+                                    .color(NamedTextColor.DARK_GRAY))
+                            .append(Component.text(" is now public! "))
+                            .append(Component.text().content("Click to join")
+                                    .clickEvent(net.kyori.adventure.text.event.ClickEvent.clickEvent(net.kyori.adventure.text.event.ClickEvent.Action.RUN_COMMAND, "/party join " + dungeonParty.getName()))
+                                    .color(NamedTextColor.GREEN)
+                                    .decorate(TextDecoration.UNDERLINED))
+                            .build();
+                    Bukkit.getOnlinePlayers().forEach(onlinePlayer -> {
+                        DungeonsSim.getInstance().adventure().player(onlinePlayer).sendMessage(textComponent2);
+                    });
+                }
             }
         }
     }
 
     @Execute(name = "start")
-    void start(@Context CommandSender sender, @Arg DungeonDifficulty dungeonDifficulty, @OptionalArg Long seed) {
+    void start(@Context CommandSender sender, @OptionalArg DungeonDifficulty dungeonDifficulty, @OptionalArg Long seed) {
         if (sender instanceof Player) {
             final Player player = (Player) sender;
             final DungeonParty dungeonParty = PartyHandler.getPartyOf(player.getUniqueId());
@@ -144,96 +192,105 @@ public class PartyCommands {
             if (dungeonParty == null) sendError(player, "You are not in a party.");
             else if (dungeonParty != null && dungeonParty.getRoleOf(player.getUniqueId()) != DungeonRole.HOST) {
                 sendError(player, "Only host can start the dungeon.");
-            }else if (dungeonParty != null && dungeonParty.getRoleOf(player.getUniqueId()) == DungeonRole.HOST && (dungeonParty.getDungeon() != null || dungeonParty.getStatus() == DungeonPartyStatus.PLAYING)){
+            }else if (dungeonParty != null &&
+                    dungeonParty.getRoleOf(player.getUniqueId()) == DungeonRole.HOST &&
+                    (dungeonParty.getDungeon() != null && dungeonParty.getStatus() == DungeonPartyStatus.PLAYING)){
                 sendError(player, "You are already in a dungeon.");
             }else {
-                final LinkedList<Player> players = new LinkedList<>();
-                final LinkedList<OfflinePlayer> removedPlayers = new LinkedList<>();
-                dungeonParty.getPlayers().forEach(((uuid, dungeonRole) -> {
-                    if (Bukkit.getOfflinePlayer(uuid).isOnline())
-                        players.add(Bukkit.getPlayer(uuid));
-                    else {
-                        dungeonParty.removePlayer(uuid);
-                        removedPlayers.add(Bukkit.getOfflinePlayer(uuid));
-                    }
-                }));
-                MessageUtils.broadcast("&e&lA DUNGEON HAS BEEN STARTED BY &6&l" + player.getName(), MessageUtils.BroadcastType.MESSAGE, MessageUtils.TargetType.PARTY, dungeonParty);
-                //dungeonParty.sendMessageToMembers("&e&lA DUNGEON HAS BEEN STARTED BY &6&l" + player.getName());
-                if (removedPlayers.size() > 0)
-                    dungeonParty.sendMessageToMembers("&c" + String.join(", ", removedPlayers.stream().map(OfflinePlayer::getName).toList()) + " were removed from the party since they have left the server.");
-                long startTime = System.currentTimeMillis();
+                if (dungeonDifficulty == null) {
+                    //GUI WITH DIFFICULTIES
+                    InventoryGUI inventoryGUI = new DifficultyGUI();
+                    DungeonsSim.getInstance().getGuiManager().openGUI(inventoryGUI, player);
+                }else{
+                    final LinkedList<Player> players = new LinkedList<>();
+                    final LinkedList<OfflinePlayer> removedPlayers = new LinkedList<>();
+                    dungeonParty.getPlayers().forEach(((uuid, dungeonRole) -> {
+                        if (Bukkit.getOfflinePlayer(uuid).isOnline())
+                            players.add(Bukkit.getPlayer(uuid));
+                        else {
+                            dungeonParty.removePlayer(uuid);
+                            removedPlayers.add(Bukkit.getOfflinePlayer(uuid));
+                        }
+                    }));
+                    MessageUtils.broadcast("&e&lA DUNGEON HAS BEEN STARTED BY &6&l" + player.getName(), MessageUtils.BroadcastType.MESSAGE, MessageUtils.TargetType.PARTY, dungeonParty);
+                    //dungeonParty.sendMessageToMembers("&e&lA DUNGEON HAS BEEN STARTED BY &6&l" + player.getName());
+                    if (removedPlayers.size() > 0)
+                        dungeonParty.sendMessageToMembers("&c" + String.join(", ", removedPlayers.stream().map(OfflinePlayer::getName).toList()) + " were removed from the party since they have left the server.");
+                    long startTime = System.currentTimeMillis();
 
-                final Dungeon dungeon = new Dungeon(DungeonHandler.getDungeons().size() + 1,
-                        players.stream().map(Player::getUniqueId).toList(), dungeonDifficulty, Instant.now());
-                dungeonParty.setDungeon(dungeon);
-                final DungeonGeneration dungeonGeneration = new DungeonGeneration(dungeon);
-                if (!Objects.isNull(seed)) {
-                    MessageUtils.broadcast("&aSeed: " + seed, MessageUtils.BroadcastType.MESSAGE, MessageUtils.TargetType.PARTY, dungeonParty);
-                    dungeonGeneration.setSeed(seed);
-                }else
-                    MessageUtils.broadcast("&aSeed: " + dungeonGeneration.getSeed(), MessageUtils.BroadcastType.MESSAGE, MessageUtils.TargetType.PARTY, dungeonParty);
+                    final Dungeon dungeon = new Dungeon(DungeonHandler.getDungeons().size() + 1,
+                            players.stream().map(Player::getUniqueId).toList(), dungeonDifficulty, Instant.now(), 3);
+                    dungeonParty.setDungeon(dungeon);
+                    final DungeonGeneration dungeonGeneration = new DungeonGeneration(dungeon);
+                    if (!Objects.isNull(seed)) {
+                        MessageUtils.broadcast("&aSeed: " + seed, MessageUtils.BroadcastType.MESSAGE, MessageUtils.TargetType.PARTY, dungeonParty);
+                        dungeonGeneration.setSeed(seed);
+                    }else
+                        MessageUtils.broadcast("&aSeed: " + dungeonGeneration.getSeed(), MessageUtils.BroadcastType.MESSAGE, MessageUtils.TargetType.PARTY, dungeonParty);
 
-                dungeonGeneration.setGridBlocks(33)
-                        .setGridOptions(6, 6)
-                        .setMinRooms(10)
-                        .setMaxRooms(10)
-                        .build();
+                    dungeonGeneration.setGridBlocks(33)
+                            .setGridOptions(6, 6)
+                            .setMinRooms(10)
+                            .setMaxRooms(10)
+                            .build();
 
-                final double DUNGEONS_GAP = 1.1;
-                //final Location loc = new Location(player.getWorld(), 19013.5 + ((DungeonHandler.getDungeons().size()) * (dungeonGeneration.getGridWidth()) * dungeonGeneration.getGridBlocks() * DUNGEONS_GAP), 141, 20846.5);
-                final Location loc = new Location(player.getWorld(), 180002 + ((DungeonHandler.getDungeons().size()) * (dungeonGeneration.getGridWidth()) * dungeonGeneration.getGridBlocks() * DUNGEONS_GAP), 141, 18407);
+                    final double DUNGEONS_GAP = 1.1;
+                    //final Location loc = new Location(player.getWorld(), 19013.5 + ((DungeonHandler.getDungeons().size()) * (dungeonGeneration.getGridWidth()) * dungeonGeneration.getGridBlocks() * DUNGEONS_GAP), 141, 20846.5);
+                    final Location loc = new Location(player.getWorld(), 2000 + ((DungeonHandler.getDungeons().size()) * (dungeonGeneration.getGridWidth()) * dungeonGeneration.getGridBlocks() * DUNGEONS_GAP), 141, 2000);
 
-                DungeonParser.parse(dungeon, dungeonGeneration, loc/*player.getLocation()*/);
+                    DungeonParser.parse(dungeon, dungeonGeneration, loc/*player.getLocation()*/);
 
-                final HashMap<DungeonGeneration.GridCell, String> roomNames = new HashMap<>();
-                final HashMap<DungeonGeneration.GridCell, String> roomTemplates = new HashMap<>();
+                    final HashMap<DungeonGeneration.GridCell, String> roomNames = new HashMap<>();
+                    final HashMap<DungeonGeneration.GridCell, String> roomTemplates = new HashMap<>();
 
-                dungeon.getRooms().forEach(room -> {
-                    roomNames.put(room.getGridCell(), room.getRoomName());
-                    roomTemplates.put(room.getGridCell(), room.getTemplate().getName());
-                });
+                    dungeon.getRooms().forEach(room -> {
+                        roomNames.put(room.getGridCell(), room.getRoomName());
+                        roomTemplates.put(room.getGridCell(), room.getTemplate().getName());
+                    });
 
-                final DungeonRoom room = dungeon.getRooms().stream().filter(dungeonRoom -> dungeonRoom.getTemplate().getName().equals("SPAWN_ROOM")).findAny().orElse(null);
-                final TempDungeonBuilds tempDungeonBuilds = DungeonHandler.loadRoom(room.getTemplate().getName(), room.getRoomName());
+                    final DungeonRoom room = dungeon.getRooms().stream().filter(dungeonRoom -> dungeonRoom.getTemplate().getName().equals("SPAWN_ROOM")).findAny().orElse(null);
+                    final TempDungeonBuilds tempDungeonBuilds = DungeonHandler.loadRoom(room.getTemplate().getName(), room.getRoomName());
 
-                dungeonParty.setStatus(DungeonPartyStatus.PLAYING);
-                final Generator2D generator2D = new Generator2D(dungeonGeneration, dungeonGeneration.getGridHeight(), dungeonGeneration.getGridWidth(), dungeonGeneration.getGridMap(), dungeonGeneration.getGridBlocks(), roomNames, roomTemplates);
-                generator2D.generateMap(loc, player.getWorld());
+                    dungeonParty.setStatus(DungeonPartyStatus.PLAYING);
+                    final Generator2D generator2D = new Generator2D(dungeonGeneration, dungeonGeneration.getGridHeight(), dungeonGeneration.getGridWidth(), dungeonGeneration.getGridMap(), dungeonGeneration.getGridBlocks(), roomNames, roomTemplates);
+                    generator2D.generateMap(loc, player.getWorld());
 
-                final ItemStack item = ItemUtils.item(Material.FILLED_MAP, "dungeon#" + dungeon.getID(), "");
-                MapMeta meta = (MapMeta) item.getItemMeta();
-                MapView view = Bukkit.createMap(player.getWorld());
+                    final ItemStack item = ItemUtils.item(Material.FILLED_MAP, "dungeon#" + dungeon.getID(), "");
+                    MapMeta meta = (MapMeta) item.getItemMeta();
+                    MapView view = Bukkit.createMap(player.getWorld());
 
-                view.getRenderers().clear();
-                view.addRenderer(generator2D);
-                view.setTrackingPosition(true);
-                view.setUnlimitedTracking(true);
-                view.setCenterX(loc.getBlockX());
-                view.setCenterZ(loc.getBlockZ());
-                view.setScale(MapView.Scale.CLOSE);
-                meta.setMapView(view);
-                item.setItemMeta(meta);
+                    view.getRenderers().clear();
+                    view.addRenderer(generator2D);
+                    view.setTrackingPosition(true);
+                    view.setUnlimitedTracking(true);
+                    view.setCenterX(loc.getBlockX());
+                    view.setCenterZ(loc.getBlockZ());
+                    view.setScale(MapView.Scale.CLOSE);
+                    meta.setMapView(view);
+                    item.setItemMeta(meta);
 
-                players.forEach(dungeonPlayer -> {
-                    //scheduler.runTask(DungeonsSim.getInstance(), () -> {
+                    players.forEach(dungeonPlayer -> {
+                        //scheduler.runTask(DungeonsSim.getInstance(), () -> {
                         if (tempDungeonBuilds.getRoomLocations().get("spawnLocation") != null && room.getLocationFromTemplate("spawnLocation") != null) {
                             dungeonPlayer.teleport(room.getLocationFromTemplate("spawnLocation"));
-                        }else if (room.getCuboid() != null) dungeonPlayer.teleport(room.getCuboid().getCenter());
-                    //});
-                    if (tempDungeonBuilds.getRoomLocations().get("spawnLocation") != null && room.getLocationFromTemplate("spawnLocation") != null) {
-                        dungeonPlayer.teleport(room.getLocationFromTemplate("spawnLocation"));
-                    }else if (room.getCuboid() != null) dungeonPlayer.teleport(room.getCuboid().getCenter());
+                        }else if (room.getCuboid() != null) {
+                            dungeonPlayer.teleport(room.getCuboid().getCenter());
+                            final PotionEffect potionEffect = new PotionEffect(PotionEffectType.NIGHT_VISION, PotionEffect.INFINITE_DURATION, 0);
+                            if (!dungeonPlayer.hasPotionEffect(PotionEffectType.NIGHT_VISION))
+                                dungeonPlayer.addPotionEffect(potionEffect);
+                        }
+                        //});
+                        dungeonPlayer.getInventory().setItemInOffHand(item);
 
-                    dungeonPlayer.getInventory().setItemInOffHand(item);
+                        long endTime = System.currentTimeMillis();
+                        long deltaTime = endTime - startTime;
 
-                    long endTime = System.currentTimeMillis();
-                    long deltaTime = endTime - startTime;
-
-                    sendNormal(dungeonPlayer, "Dungeon generated! took " + deltaTime + "ms" + " (" + deltaTime * Math.pow(10, -3) + "s)");
-                });
-                MessageUtils.broadcast("&6&lDUNGEON&b#&l" + dungeonParty.getID(), MessageUtils.BroadcastType.TITLE, MessageUtils.TargetType.DUNGEON, dungeonParty.getDungeon());
-                MessageUtils.broadcastSound(Sound.ENTITY_WITHER_SPAWN, 1f, 1f, MessageUtils.TargetType.DUNGEON, dungeonParty.getDungeon());
-                dungeonParty.getDungeon().setTimeStarted(Instant.now());
+                        sendNormal(dungeonPlayer, "Dungeon generated! took " + deltaTime + "ms" + " (" + deltaTime * Math.pow(10, -3) + "s)");
+                    });
+                    MessageUtils.broadcast("&6&lDUNGEON&b#&l" + dungeonParty.getID(), MessageUtils.BroadcastType.TITLE, MessageUtils.TargetType.DUNGEON, dungeonParty.getDungeon());
+                    MessageUtils.broadcastSound(Sound.ENTITY_WITHER_SPAWN, 1f, 1f, MessageUtils.TargetType.DUNGEON, dungeonParty.getDungeon());
+                    dungeonParty.getDungeon().setTimeStarted(Instant.now());
+                }
             }
         }
     }

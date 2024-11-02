@@ -3,4 +3,4 @@ main: org.enissay.dungeonssim.DungeonsSim
 version: BETA
 api-version: 1.19
 
-depend: [ProtocolLib]
+depend: [ProtocolLib, PlayerNPC]

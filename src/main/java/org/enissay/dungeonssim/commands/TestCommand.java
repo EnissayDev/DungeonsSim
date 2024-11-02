@@ -51,7 +51,7 @@ public class TestCommand {
             long startTime = System.currentTimeMillis();
 
             final Dungeon dungeon = new Dungeon(DungeonHandler.getDungeons().size() + 1,
-                    players.stream().map(Player::getUniqueId).toList(), DungeonDifficulty.EASY, Instant.now());
+                    players.stream().map(Player::getUniqueId).toList(), DungeonDifficulty.EASY, Instant.now(), 3);
 
             final DungeonGeneration dungeonGeneration = new DungeonGeneration(dungeon);
             dungeonGeneration.setGridBlocks(33)

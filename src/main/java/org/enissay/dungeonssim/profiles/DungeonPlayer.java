@@ -1,13 +1,21 @@
 package org.enissay.dungeonssim.profiles;
 
+import org.bukkit.ChatColor;
+import org.enissay.dungeonssim.utils.LevelUtil;
+
 import java.util.Date;
+import java.util.Objects;
 
 public class DungeonPlayer {
+
+    private static double BASE = 1.316;
 
     private Rank rank;
     private String id, name;
     private Date joinDate, lastOnline;
     private int coins;
+    private PlayerClass playerClass;
+    private long exp;
 
     public DungeonPlayer(String id, String name, Rank rank, Date joinDate, Date lastOnline, int coins) {
         this.rank = rank;
@@ -16,6 +24,20 @@ public class DungeonPlayer {
         this.joinDate = joinDate;
         this.lastOnline = lastOnline;
         this.coins = coins;
+        this.playerClass = PlayerClass.NONE;
+        this.exp = 0L;
+    }
+
+    public PlayerClass getPlayerClass() {
+        return playerClass != null ? playerClass : PlayerClass.NONE;
+    }
+
+    public long getExp() {
+        return !Objects.isNull(this.exp) ? exp : 0;
+    }
+
+    public void setExp(long exp) {
+        this.exp = exp;
     }
 
     public String getID() {
@@ -58,11 +80,32 @@ public class DungeonPlayer {
         this.joinDate = joinDate;
     }
 
+    public void setPlayerClass(PlayerClass playerClass) {
+        this.playerClass = playerClass;
+    }
+
     public void setLastOnline(Date lastOnline) {
         this.lastOnline = lastOnline;
     }
 
     public void setCoins(int coins) {
         this.coins = coins;
+    }
+
+    public int getLevel() {
+        if (exp < 0) {
+            return 1;
+        }
+
+        int level = 1;
+        while (exp >= LevelUtil.maxExpForLevel(level)) {
+            level++;
+        }
+        return level;
+    }
+
+    public long getMaxEXP() {
+        int level = getLevel();
+        return LevelUtil.maxExpForLevel(level);
     }
 }

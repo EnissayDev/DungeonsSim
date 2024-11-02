@@ -1,10 +1,12 @@
 package org.enissay.dungeonssim.handlers;
 
 import com.google.gson.Gson;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.enissay.dungeonssim.DungeonsSim;
 import org.enissay.dungeonssim.profiles.DungeonPlayer;
 import org.enissay.dungeonssim.profiles.Rank;
+import org.enissay.dungeonssim.profiles.event.PlayerLevelUpEvent;
 
 import java.io.*;
 import java.time.Instant;
@@ -58,6 +60,29 @@ public class ProfilesHandler {
         return null;
     }
 
+    public static void giveEXP(String id, final long exp) {
+        DungeonPlayer profile = findProfile(id);
+        final int oldLevel = profile.getLevel();
+        if (profile != null) {
+            profile.setExp(profile.getExp()+exp);
+            updateProfile(id, profile);
+            final int newLevel = profile.getLevel();
+            if (newLevel > oldLevel)
+                Bukkit.getPluginManager().callEvent(new PlayerLevelUpEvent(Bukkit.getPlayer(UUID.fromString(id)), findProfile(id), newLevel, oldLevel));
+        }
+    }
+
+    public static void setEXP(String id, final long exp) {
+        DungeonPlayer profile = findProfile(id);
+        final int oldLevel = profile.getLevel();
+        if (profile != null) {
+            profile.setExp(exp);
+            updateProfile(id, profile);
+            final int newLevel = profile.getLevel();
+            if (newLevel > oldLevel)
+                Bukkit.getPluginManager().callEvent(new PlayerLevelUpEvent(Bukkit.getPlayer(UUID.fromString(id)), findProfile(id), newLevel, oldLevel));
+        }
+    }
     public static DungeonPlayer updateProfile(String id, DungeonPlayer newProfile){
         for (DungeonPlayer profile : profiles) {
             if (profile.getID().equalsIgnoreCase(id)) {
@@ -66,6 +91,8 @@ public class ProfilesHandler {
                 profile.setJoinDate(newProfile.getJoinDate());
                 profile.setLastOnline(newProfile.getLastOnline());
                 profile.setCoins(newProfile.getCoins());
+                profile.setPlayerClass(newProfile.getPlayerClass());
+                profile.setExp(newProfile.getExp());
             }
         }
         ScoreboardHandler.update();
@@ -80,6 +107,8 @@ public class ProfilesHandler {
                 profile.setJoinDate(newProfile.getJoinDate());
                 profile.setLastOnline(newProfile.getLastOnline());
                 profile.setCoins(newProfile.getCoins());
+                profile.setPlayerClass(newProfile.getPlayerClass());
+                profile.setExp(newProfile.getExp());
             }
         }
         ScoreboardHandler.update();

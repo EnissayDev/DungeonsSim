@@ -69,7 +69,7 @@ public class GenerateCommand {
                         .build();
                 RoomPasting roomPasting = new RoomPasting(tempDungeonBuilds, spawnLocation, RoomRotation.valueOf(rotation),
                         new int[]{0, 0, 0, 0}, editSession);//LEFT, RIGHT, DOWN, UP
-                roomPasting.paste(null, cuboid.getXWidth());
+                roomPasting.paste(null, cuboid.getXWidth(), false);
                 //roomPasting.pasteNewMethod(cuboid.getXWidth());
                 //roomPasting.pasteWithJigsaw(null, roomName, cuboid.getXWidth());
                 //roomPasting.setTaskID(Bukkit.getScheduler().scheduleSyncRepeatingTask(DungeonsSim.getInstance(), roomPasting, 1, 1));

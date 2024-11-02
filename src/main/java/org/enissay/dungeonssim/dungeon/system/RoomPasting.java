@@ -42,6 +42,7 @@ import org.enissay.dungeonssim.commands.dungeonloc.TempDungeonBuilds;
 import org.enissay.dungeonssim.commands.dungeonloc.TempDungeonBuildsManager;
 import org.enissay.dungeonssim.dungeon.CuboidTest;
 import org.enissay.dungeonssim.dungeon.templates.RoomRotation;
+import org.enissay.dungeonssim.handlers.DungeonHandler;
 import org.enissay.dungeonssim.utils.BlockChanger;
 import org.enissay.dungeonssim.utils.Cuboid;
 
@@ -60,6 +61,7 @@ public class RoomPasting {
     public RoomRotation rotation;
     public int[] doors;
     private EditSession editSession;
+    private List<Block> spawnDoors;
 
     private static Map<Dungeon, List<EditSession>> sessions = new HashMap<>();
 
@@ -69,6 +71,7 @@ public class RoomPasting {
         this.cuboid = new Cuboid(TempDungeonBuildsManager.roomLocationToBukkit(tempDungeonBuilds.getLocation1()), TempDungeonBuildsManager.roomLocationToBukkit(tempDungeonBuilds.getLocation2()));
         this.rotation = rotation;
         this.doors = doors;
+        this.spawnDoors = new ArrayList<>();
     }
 
     public RoomPasting(TempDungeonBuilds tempDungeonBuilds, Location spawnLocation, RoomRotation rotation, int[] doors, EditSession editSession) {
@@ -78,6 +81,7 @@ public class RoomPasting {
         this.rotation = rotation;
         this.doors = doors;
         this.editSession = editSession;
+        this.spawnDoors = new ArrayList<>();
     }
 
     /*public String betterLoc(final Location location) {
@@ -97,7 +101,7 @@ public class RoomPasting {
         return sessions.get(dungeon);
     }
 
-    public Cuboid paste(Dungeon dungeon, int gridBlocks) {
+    public Cuboid paste(Dungeon dungeon, int gridBlocks, boolean close) {
 
         BlockVector3 pos1Vector = BlockVector3.at(cuboid.getPoint1().getBlockX(), cuboid.getPoint1().getY(), cuboid.getPoint1().getZ());
         BlockVector3 pos2Vector = BlockVector3.at(cuboid.getPoint2().getBlockX(), cuboid.getPoint2().getY(), cuboid.getPoint2().getZ());
@@ -146,12 +150,20 @@ public class RoomPasting {
             CuboidTest cuboidTest = newCuboid.getWalls()[i];
             switch (doors[i]) {
                 //NORMAL CLOSING
-
                 case 1:
                     cuboidTest.forEach(loc -> {
                         final Block block = loc.getBlock();
                         if (block.getType() == Material.LIME_WOOL) {
-                            block.setType(Material.AIR);
+                            /*if (DungeonHandler.getTemplate(tempDungeonBuilds.getTemplateName()).getName().equals("SPAWN_ROOM")) {
+                                block.setType(Material.COAL_BLOCK);
+                            }*/
+                            if (!close)
+                                block.setType(Material.AIR);
+                            else {
+                                if (spawnDoors != null)
+                                    spawnDoors.add(block);
+                                block.setType(Material.SMOOTH_STONE);
+                            }
                         }
                     });
                     break;
@@ -164,9 +176,21 @@ public class RoomPasting {
                         }
                     });
                     break;
+                case 0:
+                    cuboidTest.forEach(loc -> {
+                        final Block block = loc.getBlock();
+                        if (block.getType() == Material.LIME_WOOL) {
+                            block.setType(Material.SMOOTH_STONE);
+                        }
+                    });
+                    break;
             }
         }
         return new Cuboid(BukkitAdapter.adapt(spawnLocation.getWorld(), baseLocation), BukkitAdapter.adapt(spawnLocation.getWorld(), baseLocation.add(diffX, diffY, diffZ)));
+    }
+
+    public List<Block> getSpawnDoors() {
+        return spawnDoors;
     }
 
     public static Clipboard fromCuboid(CuboidRegion region) {
